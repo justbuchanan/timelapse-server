@@ -1,0 +1,4 @@
+*.pyc
+example/*.jpg
+out/*
+timelapse-server
