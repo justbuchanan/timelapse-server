@@ -233,6 +233,7 @@ func main() {
 	imgDir := flag.String("image-dir", "./", "Directory of timestamped image files")
 	outDir := flag.String("out-dir", "", "Directory to store completed timelapses and html. This directory will be served publicly, so don't put anything secret in here.")
 	httpPort := flag.String("port", "8888", "Port to serve on")
+	updateInterval := flag.Int("update-interval", 60*60, "How often, in seconds, to regenerate all timelapses.")
 	flag.Parse()
 
 	if *outDir == "" {
@@ -241,18 +242,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// periodically regenerate timelapse videos
-	updateInterval := 20 * time.Second
+	updateAll := func() {
+		imageInfos := ReadImageFileInfos(*imgDir)
+		log.Printf("Found %d images\n", len(imageInfos))
+		grouped := FilterAndGroupByDay(imageInfos)
+		GenerateDailyTimelapses(grouped, *imgDir, *outDir)
+	}
+
+	updateAll()
+
+	// update on a fixed interval
+	interval := time.Duration(*updateInterval) * time.Second
 	go func() {
-		for _ = range time.Tick(updateInterval) {
-			imageInfos := ReadImageFileInfos(*imgDir)
-			log.Printf("Found %d images\n", len(imageInfos))
-			grouped := FilterAndGroupByDay(imageInfos)
-			GenerateDailyTimelapses(grouped, *imgDir, *outDir)
+		for _ = range time.Tick(interval) {
+			updateAll()
 		}
 	}()
 
-	log.Printf("Serving '%s' on port '%s'\n", *outDir, *httpPort)
+	// periodically regenerate timelapse videos
+	go log.Printf("Serving '%s' on port '%s'\n", *outDir, *httpPort)
 	http.Handle("/", http.FileServer(http.Dir(*outDir)))
 	log.Fatal(http.ListenAndServe(":"+*httpPort, nil))
 }
