@@ -212,14 +212,21 @@ func GenerateDailyTimelapses(grouping []ImageFileInfos, imgDir string, outDir st
 		log.Fatal(err)
 	}
 
+	// Create a timelapse for each day in parallel
+	var wg sync.WaitGroup
+	wg.Add(len(grouping))
 	for _, infos := range grouping {
-		outPath, err := GenerateTimelapseForImages(infos, tmpDir, imgDir, outDir)
-		if err != nil {
-			log.Println("Error generating timelapse ", err)
-		} else {
-			log.Printf("Created timelapse at '%s'\n", outPath)
-		}
+		go func(infos ImageFileInfos) {
+			defer wg.Done()
+			outPath, err := GenerateTimelapseForImages(infos, tmpDir, imgDir, outDir)
+			if err != nil {
+				log.Println("Error generating timelapse ", err)
+			} else {
+				log.Printf("Created timelapse at '%s'\n", outPath)
+			}
+		}(infos)
 	}
+	wg.Wait()
 }
 
 func main() {

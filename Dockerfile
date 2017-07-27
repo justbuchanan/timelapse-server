@@ -15,5 +15,4 @@ WORKDIR timelapse-server
 COPY image_brightness.py ./
 COPY main.go ./
 
-# RUN ./image_filter.py /data/1500874411-image.jpg
 CMD go run main.go --image-dir /data --out-dir /www 
