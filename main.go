@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -74,12 +76,15 @@ func (slice ImageFileInfos) Swap(i, j int) {
 
 func CalculateImageBrightness(filepath string) (float64, error) {
 	// run python script to calculate image brightness
-	b, err := exec.Command("./image_brightness.py", filepath).Output()
+	cmd := exec.Command("./image_brightness.py", filepath)
+	var outbuf, errbuf bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &outbuf, &errbuf
+	err := cmd.Run()
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, errbuf.String())
 	}
 
-	brightnessStr := strings.TrimSpace(string(b))
+	brightnessStr := strings.TrimSpace(outbuf.String())
 
 	brightness, err := strconv.ParseFloat(brightnessStr, 64)
 	return brightness, err
@@ -199,8 +204,10 @@ func GenerateTimelapseForImages(images ImageFileInfos, tmpDir string, imgDir str
 	outPath := filepath.Join(outDir, dayStr+".avi")
 	fps := 20
 	cmd := exec.Command("mencoder", "-nosound", "-ovc", "lavc", "-mf", fmt.Sprintf("type=jpeg:fps=%d", fps), fmt.Sprintf("mf://@%s", manifestFilepath), "-o", outPath)
+	var outbuf, errbuf bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &outbuf, &errbuf
 	if err := cmd.Run(); err != nil {
-		return "", err
+		return "", errors.Wrap(err, outbuf.String())
 	}
 
 	return outPath, nil
@@ -221,9 +228,10 @@ func GenerateDailyTimelapses(grouping []ImageFileInfos, imgDir string, outDir st
 			outPath, err := GenerateTimelapseForImages(infos, tmpDir, imgDir, outDir)
 			if err != nil {
 				log.Println("Error generating timelapse ", err)
-			} else {
-				log.Printf("Created timelapse at '%s'\n", outPath)
+				return
 			}
+
+			log.Printf("Created timelapse at '%s'\n", outPath)
 		}(infos)
 	}
 	wg.Wait()

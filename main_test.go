@@ -18,7 +18,6 @@ func TestProcessFiles(t *testing.T) {
 	result := ReadImageFileInfos("./example")
 	assert.Equal(t, 31, len(result))
 
-	// assert.True(t, true, result[len(result)-1].Timestamp.After(result[0].Timestamp))
 	if !sort.IsSorted(result) {
 		t.Fatal("Result isn't sorted")
 	}
