@@ -19,5 +19,5 @@ WORKDIR timelapse-server
 COPY image_brightness.py ./
 COPY main.go ./
 
-RUN go build main.go -o timelapse-server
+RUN go build -o timelapse-server main.go
 CMD ./timelapse-server --image-dir /data --out-dir /www 
