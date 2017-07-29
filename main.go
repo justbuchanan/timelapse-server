@@ -31,7 +31,7 @@ func ParseTimestamp(timestamp string) (time.Time, error) {
 }
 
 func FormatDate(t time.Time) string {
-	return fmt.Sprintf("%d-%d-%d", t.Year(), t.Month(), t.Day())
+	return fmt.Sprintf("%02d-%02d-%02d", t.Year(), t.Month(), t.Day())
 }
 
 func ImageFileToTimestamp(fname string) (time.Time, error) {
@@ -153,6 +153,7 @@ func FilterAndGroupByDay(imgInfos ImageFileInfos) []ImageFileInfos {
 
 	for _, info := range imgInfos {
 		if info.Brightness < BrightnessThreshold {
+			log.Println("Skipping dark file: ", info.Filename)
 			continue
 		}
 
@@ -237,6 +238,41 @@ func GenerateDailyTimelapses(grouping []ImageFileInfos, imgDir string, outDir st
 	wg.Wait()
 }
 
+// date in form 2017-07-28
+func ParseDate(dateStr string) (time.Time, error) {
+	fmt.Printf("ParseDate(%s)\n", dateStr)
+	layout := "2006-01-02"
+	return time.Parse(layout, dateStr)
+}
+
+// Get timestamps of timelapses that already exist in the output directory
+func DetectExistingTimelapses(outDir string) []time.Time {
+	files, err := ioutil.ReadDir(outDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var videoTimestamps []time.Time
+
+	// Process all image files concurrently, adding the results to imageInfos
+	for _, file := range files {
+		ext := filepath.Ext(file.Name())
+		if ext != ".avi" {
+			return nil
+		}
+
+		tms := strings.Replace(file.Name(), ext, "", -1)
+		t, err := ParseDate(tms)
+		if err != nil {
+			fmt.Printf("Unable to parse date from timelapse file: %s\n", file.Name())
+			continue
+		}
+		videoTimestamps = append(videoTimestamps, t)
+	}
+
+	return videoTimestamps
+}
+
 func main() {
 	imgDir := flag.String("image-dir", "./", "Directory of timestamped image files")
 	outDir := flag.String("out-dir", "", "Directory to store completed timelapses and html. This directory will be served publicly, so don't put anything secret in here.")
@@ -254,6 +290,24 @@ func main() {
 		imageInfos := ReadImageFileInfos(*imgDir)
 		log.Printf("Found %d images\n", len(imageInfos))
 		grouped := FilterAndGroupByDay(imageInfos)
+
+		existing := DetectExistingTimelapses(*outDir)
+		if len(existing) > 0 {
+			fmt.Println("existing timelapses: ", existing)
+			for _, t := range existing[:len(existing)-1] {
+				for i, group := range grouped {
+					if TimesOnSameDay(t, group[0].Timestamp) {
+						// TODO: make this clearer
+						// delete element i
+						grouped[i] = grouped[len(grouped)-1]
+						grouped = grouped[:len(grouped)-1]
+						log.Println("Skipping timelapse, it's already generated: ", t)
+						break
+					}
+				}
+			}
+		}
+
 		GenerateDailyTimelapses(grouped, *imgDir, *outDir)
 	}
 

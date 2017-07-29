@@ -2,8 +2,7 @@ FROM justbuchanan/docker-archlinux
 MAINTAINER Justin Buchanan <justbuchanan@gmail.com>
 
 RUN pacman -Syyu --noconfirm
-RUN pacman -S --noconfirm go python python-numpy opencv hdf5 mencoder
-RUN pacman -S --noconfirm git
+RUN pacman -S --noconfirm go python python-numpy opencv hdf5 mencoder git -v
 RUN rm /var/cache/pacman/pkg/*
 
 ENV GOPATH=/go
