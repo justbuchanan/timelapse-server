@@ -103,44 +103,54 @@ func ReadImageFileInfos(imgDir string) ImageFileInfos {
 	var wg sync.WaitGroup
 	wg.Add(len(files))
 
-	// Process all image files concurrently, adding the results to imageInfos
-	for _, file := range files {
-		go func(file os.FileInfo) {
-			defer wg.Done()
+	processImage := func(file os.FileInfo) {
+		defer wg.Done()
 
-			if file.Size() == 0 {
-				return
-			}
+		if file.Size() == 0 {
+			return
+		}
 
-			ext := filepath.Ext(file.Name())
-			if ext != ".jpg" {
-				return
-			}
+		ext := filepath.Ext(file.Name())
+		if ext != ".jpg" {
+			return
+		}
 
-			fpath := filepath.Join(imgDir, file.Name())
-			b, err := CalculateImageBrightness(fpath)
-			if err != nil {
-				log.Fatal(err)
-			}
+		fpath := filepath.Join(imgDir, file.Name())
+		b, err := CalculateImageBrightness(fpath)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-			tm, err := ImageFileToTimestamp(file.Name())
-			if err != nil {
-				log.Fatal(err) // TODO
-			}
+		tm, err := ImageFileToTimestamp(file.Name())
+		if err != nil {
+			log.Fatal(err) // TODO
+		}
 
-			info := ImageFileInfo{
-				Filename:   file.Name(),
-				Timestamp:  tm,
-				Brightness: b,
-			}
+		info := ImageFileInfo{
+			Filename:   file.Name(),
+			Timestamp:  tm,
+			Brightness: b,
+		}
 
-			mutex.Lock()
-			imageInfos = append(imageInfos, info)
-			mutex.Unlock()
-		}(file)
+		mutex.Lock()
+		imageInfos = append(imageInfos, info)
+		mutex.Unlock()
 	}
 
-	wg.Wait()
+	parallel := false
+
+	if parallel {
+		// Process all image files concurrently, adding the results to imageInfos
+		for _, file := range files {
+			go processImage(file)
+		}
+
+		wg.Wait()
+	} else {
+		for _, file := range files {
+			processImage(file)
+		}
+	}
 
 	sort.Sort(imageInfos)
 
