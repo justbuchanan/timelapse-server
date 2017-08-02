@@ -128,6 +128,8 @@ func ReadImageFileInfos(imgDir string, excludeDates []time.Time) ImageFileInfos 
 			}
 		}
 
+		log.Printf("calculating brightness %s\n", file.Name())
+
 		fpath := filepath.Join(imgDir, file.Name())
 		b, err := CalculateImageBrightness(fpath)
 		if err != nil {
@@ -330,6 +332,7 @@ func main() {
 	interval := time.Duration(*updateInterval) * time.Second
 	go func() {
 		for _ = range time.Tick(interval) {
+			log.Printf("It's been %d seconds, updating timelapses...\n", *updateInterval)
 			updateAll()
 		}
 	}()
