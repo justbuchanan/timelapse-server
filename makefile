@@ -1,3 +1,5 @@
+# A collection of useful commands for working with this project
+# Some of these require putting images into the 'example' directory in order to fully test
 
 run:
 	mkdir -p example
@@ -13,7 +15,8 @@ dockerrun: dockerbuild
 	docker run -v /home/justin/go/src/github.com/justbuchanan/timelapse-server/example:/data -v /home/justin/go/src/github.com/justbuchanan/timelapse-server/out:/www -t img
 
 pretty:
-	go fmt .
+	go fmt ./...
+	# requires the python package 'yapf' to be installed
 	yapf --style Google -i *.py
 
 testloop:

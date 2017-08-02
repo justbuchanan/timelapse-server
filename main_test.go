@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
+	"time"
 )
 
 func TestCalculateImageBrightness(t *testing.T) {
@@ -15,7 +16,7 @@ func TestCalculateImageBrightness(t *testing.T) {
 }
 
 func TestProcessFiles(t *testing.T) {
-	result := ReadImageFileInfos("./example")
+	result := ReadImageFileInfos("./example", make([]time.Time, 0))
 	assert.Equal(t, 31, len(result))
 
 	if !sort.IsSorted(result) {
@@ -24,7 +25,7 @@ func TestProcessFiles(t *testing.T) {
 }
 
 func TestFilterAndGroupByDay(t *testing.T) {
-	imgInfos := ReadImageFileInfos("./example")
+	imgInfos := ReadImageFileInfos("./example", make([]time.Time, 0))
 	grouped := FilterAndGroupByDay(imgInfos)
 
 	assert.Equal(t, 2, len(grouped), "The photos were taken across two days")

@@ -91,7 +91,7 @@ func CalculateImageBrightness(filepath string) (float64, error) {
 }
 
 // @Return filtered and sorted images
-func ReadImageFileInfos(imgDir string) ImageFileInfos {
+func ReadImageFileInfos(imgDir string, excludeDates []time.Time) ImageFileInfos {
 	files, err := ioutil.ReadDir(imgDir)
 	if err != nil {
 		log.Fatal(err)
@@ -115,15 +115,23 @@ func ReadImageFileInfos(imgDir string) ImageFileInfos {
 			return
 		}
 
+		tm, err := ImageFileToTimestamp(file.Name())
+		if err != nil {
+			log.Fatal(err) // TODO
+		}
+
+		// TODO: make this not be O(n^2)
+		for _, excludedDay := range excludeDates {
+			if TimesOnSameDay(tm, excludedDay) {
+				// filtered out, we're done here
+				return
+			}
+		}
+
 		fpath := filepath.Join(imgDir, file.Name())
 		b, err := CalculateImageBrightness(fpath)
 		if err != nil {
 			log.Fatal(err)
-		}
-
-		tm, err := ImageFileToTimestamp(file.Name())
-		if err != nil {
-			log.Fatal(err) // TODO
 		}
 
 		info := ImageFileInfo{
@@ -250,7 +258,6 @@ func GenerateDailyTimelapses(grouping []ImageFileInfos, imgDir string, outDir st
 
 // date in form 2017-07-28
 func ParseDate(dateStr string) (time.Time, error) {
-	fmt.Printf("ParseDate(%s)\n", dateStr)
 	layout := "2006-01-02"
 	return time.Parse(layout, dateStr)
 }
@@ -297,31 +304,26 @@ func main() {
 	}
 
 	updateAll := func() {
-		imageInfos := ReadImageFileInfos(*imgDir)
-		log.Printf("Found %d images\n", len(imageInfos))
-		grouped := FilterAndGroupByDay(imageInfos)
-
+		log.Printf("Detecting existing timelapses...\n")
 		existing := DetectExistingTimelapses(*outDir)
+		var excludeDates []time.Time
 		if len(existing) > 0 {
-			fmt.Println("existing timelapses: ", existing)
-			for _, t := range existing[:len(existing)-1] {
-				for i, group := range grouped {
-					if TimesOnSameDay(t, group[0].Timestamp) {
-						// TODO: make this clearer
-						// delete element i
-						grouped[i] = grouped[len(grouped)-1]
-						grouped = grouped[:len(grouped)-1]
-						log.Println("Skipping timelapse, it's already generated: ", t)
-						break
-					}
-				}
-			}
+			excludeDates = existing[:len(existing)-1]
+		} else {
+			excludeDates = existing
 		}
+
+		log.Printf("=> Done detecting timelapses. Found %d\n", len(existing))
+
+		log.Printf("Reading image directory...\n")
+		imageInfos := ReadImageFileInfos(*imgDir, excludeDates)
+		log.Printf("=> Found %d images\n", len(imageInfos))
+		grouped := FilterAndGroupByDay(imageInfos)
 
 		GenerateDailyTimelapses(grouped, *imgDir, *outDir)
 	}
 
-	updateAll()
+	go updateAll()
 
 	// update on a fixed interval
 	interval := time.Duration(*updateInterval) * time.Second
