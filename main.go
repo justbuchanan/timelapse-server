@@ -320,6 +320,7 @@ func main() {
 		log.Printf("=> Found %d images\n", len(imageInfos))
 		grouped := FilterAndGroupByDay(imageInfos)
 
+		log.Printf("Generating %d timelapses...\n", len(grouped))
 		GenerateDailyTimelapses(grouped, *imgDir, *outDir)
 	}
 
