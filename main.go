@@ -173,7 +173,6 @@ func FilterAndGroupByDay(imgInfos ImageFileInfos) []ImageFileInfos {
 
 	for _, info := range imgInfos {
 		if info.Brightness < BrightnessThreshold {
-			log.Println("Skipping dark file: ", info.Filename)
 			continue
 		}
 
