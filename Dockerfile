@@ -18,5 +18,11 @@ WORKDIR timelapse-server
 COPY image_brightness.py ./
 COPY main.go ./
 
+# West coast
+# TODO: pull this from the host system?
+# Borrowed from: https://serverfault.com/questions/683605/docker-container-time-timezone-will-not-reflect-changes
+ENV TZ=America/Los_Angeles
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 RUN go build -o timelapse-server main.go
 CMD ./timelapse-server --image-dir /data --out-dir /www 
